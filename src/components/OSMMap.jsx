@@ -98,7 +98,7 @@ export default function OSMMap({
   useEffect(() => {
     if (userLocation) {
       setMapCenter([userLocation.lat, userLocation.lng]);
-      setMapZoom(13);
+      setMapZoom(10);
     }
   }, [userLocation]);
 
@@ -135,7 +135,7 @@ export default function OSMMap({
         {showHeatmap && (
           <AQIWMSLayer 
             selectedDay={selectedDay} 
-            opacity={1.0}
+            opacity={0.6}
           />
         )}
 
