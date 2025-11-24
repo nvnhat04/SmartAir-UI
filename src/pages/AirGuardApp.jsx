@@ -11,9 +11,7 @@ import {
   Map as MapIcon,
   MapPin,
   MessageSquare,
-  Minus,
   Newspaper,
-  Plus,
   Search,
   Shield,
   Thermometer,
@@ -211,8 +209,13 @@ const mapLabels = [
 
 // Dữ liệu biểu đồ nhỏ
 const weeklyData = [
-  { time: 'Mon', val: 150 }, { time: 'Tue', val: 85 }, { time: 'Wed', val: 120 }, 
-  { time: 'Thu', val: 90 }, { time: 'Fri', val: 70 }, { time: 'Sat', val: 40 }
+  { time: 'T2', date: '18/11', val: 150 }, 
+  { time: 'T3', date: '19/11', val: 85 }, 
+  { time: 'T4', date: '20/11', val: 120 }, 
+  { time: 'T5', date: '21/11', val: 90 }, 
+  { time: 'T6', date: '22/11', val: 70 }, 
+  { time: 'T7', date: '23/11', val: 40 },
+  { time: 'CN', date: '24/11', val: 60 }
 ];
 
 
@@ -575,14 +578,37 @@ export default function AirGuardApp() {
   // 2. DETAIL VIEW REDESIGNED
   const DetailView = () => {
     const data = detailData || stationMarkers[0]; // Fallback
+    
+    // Lấy thông tin ngày giờ hiện tại
+    const getCurrentDateTime = () => {
+      const now = new Date();
+      const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+      const dayName = days[now.getDay()];
+      const date = now.getDate().toString().padStart(2, '0');
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const year = now.getFullYear();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      
+      return {
+        dayName,
+        fullDate: `${date}/${month}/${year}`,
+        time: `${hours}:${minutes}`,
+        displayDate: `${dayName}, ${date}/${month}/${year}`,
+        displayTime: `Cập nhật lúc ${hours}:${minutes}`
+      };
+    };
+    
+    const dateTime = getCurrentDateTime();
+    
     const forecastData = [
-  { day: "Mon", temp: 32, aqi: 90, icon: "☀️" },
-  { day: "Tue", temp: 30, aqi: 110, icon: "🌤️" },
-  { day: "Wed", temp: 28, aqi: 120, icon: "⛅" },
-  { day: "Thur", temp: 32, aqi: 90, icon: "☀️" },
-  { day: "Fri", temp: 30, aqi: 60, icon: "🌤️" },
-  { day: "Sat", temp: 28, aqi: 40, icon: "⛅" },
-  { day: "Sun", temp: 27, aqi: 20, icon: "🌥️" }
+  { day: "T2", fullDay: "Thứ 2", date: "25/11", temp: 32, aqi: 90, icon: "☀️" },
+  { day: "T3", fullDay: "Thứ 3", date: "26/11", temp: 30, aqi: 110, icon: "🌤️" },
+  { day: "T4", fullDay: "Thứ 4", date: "27/11", temp: 28, aqi: 120, icon: "⛅" },
+  { day: "T5", fullDay: "Thứ 5", date: "28/11", temp: 32, aqi: 90, icon: "☀️" },
+  { day: "T6", fullDay: "Thứ 6", date: "29/11", temp: 30, aqi: 60, icon: "🌤️" },
+  { day: "T7", fullDay: "Thứ 7", date: "30/11", temp: 28, aqi: 40, icon: "⛅" },
+  { day: "CN", fullDay: "Chủ nhật", date: "01/12", temp: 27, aqi: 20, icon: "🌥️" }
 ];
   const getAQIColor = (score) => {
   if (score <= 50) return "bg-green-100 text-green-800";
@@ -598,6 +624,18 @@ export default function AirGuardApp() {
           <button onClick={() => setActiveTab('map')} className="absolute top-6 left-6 p-2.5 bg-white/25 backdrop-blur-md rounded-xl hover:bg-white/35 transition-all duration-300 shadow-lg hover:scale-105">
             <ArrowLeft size={22} className="text-white" />
           </button>
+          
+          {/* Date Time Info */}
+          <div className="absolute top-6 right-4 text-right">
+            <div className="bg-white/20 backdrop-blur-md rounded-xl px-3 py-1 border border-white/30 shadow-lg">
+              <div className="flex items-center space-x-2 mb-1">
+                <Calendar size={14} />
+                <span className="text-xs font-bold">Hôm nay, {dateTime.displayDate}</span>
+              </div>
+              {/* <div className="text-[10px] opacity-90">{dateTime.displayTime}</div> */}
+            </div>
+          </div>
+          
           <div className="text-center mt-4 flex flex-col items-center">
             <div className="flex justify-center items-center space-x-2 text-sm mb-3 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 inline-flex">
               <MapPin size={16} className="animate-pulse" /> 
@@ -689,9 +727,12 @@ export default function AirGuardApp() {
 
           {/* Mini Chart */}
           <div className="bg-white rounded-3xl p-5 shadow-xl border-2 border-gray-100 mb-5">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-              <h3 className="font-bold text-gray-800 text-base">Diễn biến trong tuần</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+                <h3 className="font-bold text-gray-800 text-base">Diễn biến trong 7 ngày tiếp theo</h3>
+              </div>
+              <span className="text-[10px] text-gray-500 font-medium">18/11 - 24/11</span>
             </div>
             <div className="h-36 w-full bg-gradient-to-b from-gray-50 to-white rounded-2xl p-3">
               <ResponsiveContainer width="100%" height="100%">
@@ -703,22 +744,36 @@ export default function AirGuardApp() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="3 3" />
-                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#9ca3af', fontWeight: 600}} />
+                  <XAxis 
+                    dataKey="time" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 11, fill: '#9ca3af', fontWeight: 600}} 
+                  />
                   <Area type="monotone" dataKey="val" stroke={data.color} fill="url(#grad)" strokeWidth={3} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            {/* Date labels below chart */}
+            <div className="flex justify-between px-3 mt-2">
+              {weeklyData.map((item, idx) => (
+                <span key={idx} className="text-[9px] text-gray-400 font-medium">{item.date}</span>
+              ))}
+            </div>
           </div>
 
        <div>
-  <div className="flex items-center space-x-3 mb-4">
-    <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-2.5 rounded-xl shadow-md">
-      <Calendar size={20} className="text-white"/>
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center space-x-3">
+      <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-2.5 rounded-xl shadow-md">
+        <Calendar size={20} className="text-white"/>
+      </div>
+      <div>
+        <h3 className="font-bold text-gray-800 text-lg">Dự báo 7 ngày</h3>
+        <p className="text-xs text-gray-500">Thời tiết & chất lượng không khí</p>
+      </div>
     </div>
-    <div>
-      <h3 className="font-bold text-gray-800 text-lg">Dự báo 7 ngày</h3>
-      <p className="text-xs text-gray-500">Thời tiết & chất lượng không khí</p>
-    </div>
+    <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-lg">25/11 - 01/12</span>
   </div>
 
       {/* Sliding Window */}
@@ -729,7 +784,10 @@ export default function AirGuardApp() {
               key={idx} 
               className="min-w-[120px] bg-gradient-to-br from-white to-gray-50 rounded-3xl p-5 shadow-lg border-2 border-gray-100 flex flex-col items-center space-y-3 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
             >
-              <span className="font-bold text-gray-700 text-sm">{day.day}</span>
+              <div className="text-center">
+                <span className="font-bold text-gray-700 text-sm block">{day.fullDay}</span>
+                <span className="text-[10px] text-gray-500 font-medium">{day.date}</span>
+              </div>
               <div className="text-4xl drop-shadow-md">{day.icon}</div>
               <span className="font-black text-gray-800 text-xl">{day.temp}°C</span>
               <span className={`text-xs font-bold px-3 py-1.5 rounded-xl shadow-md ${getAQIColor(day.aqi)}`}>
@@ -739,6 +797,7 @@ export default function AirGuardApp() {
           ))}
         </div>
       </div>
+      <p className="text-xs text-gray-400 mt-2">Kéo sang phải để xem thêm</p>
     </div>
 
         </div>

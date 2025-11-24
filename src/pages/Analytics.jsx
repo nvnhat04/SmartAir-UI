@@ -24,6 +24,7 @@ const analyticsData = [
   { day: '+4', date: '28-11', aqi: 105, location: 'Dự báo: TP. Bắc Ninh', type: 'future', note: 'Bạn đã đến đây ngày 20/11' },
   { day: '+5', date: '29-11', aqi: 120, location: 'Dự báo: Quận Hà Đông', type: 'future', note: 'Bạn đã đến đây ngày 21/11' },
   { day: '+6', date: '30-11', aqi: 130, location: 'Dự báo: TP. Việt Trì', type: 'future', note: 'Bạn đã đến đây ngày 22/11' },
+  { day: '+7', date: '01-12', aqi: 125, location: 'Dự báo: TP. Chí Linh', type: 'future', note: 'Bạn đã đến đây ngày 23/11' },
 ];
 const cleanestAreas = [
   { id: 1, name: "Xã Xuân Quan, Huyện Văn Giang, Hưng Yên", aqi: 40, pm25: 10 },
@@ -323,9 +324,9 @@ export default function AnalyticsView () {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Lịch sử & Dự báo</h1>
           <p className="text-sm text-gray-500 mt-1">Phân tích chất lượng không khí 14 ngày</p>
         </div>
-        <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-100">
+        {/* <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-100">
           <BarChart2 className="text-blue-600" size={24} />
-        </div>
+        </div> */}
       </div>
 
       {/* Interactive Chart */}
@@ -333,7 +334,7 @@ export default function AnalyticsView () {
         <div className="text-sm font-bold text-gray-800 mb-5 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
-            <span className="text-lg">Diễn biến 14 ngày</span>
+            <span className="text-lg">Diễn biến 15 ngày</span>
           </div>
           <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
@@ -444,7 +445,7 @@ export default function AnalyticsView () {
             <div className="absolute right-0 top-0 p-3 opacity-5"><TrendingUp size={50}/></div>
             <div className="flex items-center space-x-2 mb-2">
               <TrendingUp size={16} className="text-blue-600"/>
-              <div className="text-xs font-bold text-blue-600">6 NGÀY TỚI</div>
+              <div className="text-xs font-bold text-blue-600"> 7 NGÀY TỚI</div>
             </div>
 
             <div className="text-3xl font-black text-blue-600 mb-1">{futureAvg}</div>
