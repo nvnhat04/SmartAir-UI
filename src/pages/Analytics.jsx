@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer,
 import WeekendGetaway from './Weekend';
 // 3. ANALYTICS VIEW (BAR CHART ONLY WITH AQI COLORS AND PM2.5 EXPOSURE)
 const analyticsData = [
+  // 7 ngày qua - Lịch sử di chuyển của user
   { day: '-7', date: '17-11', aqi: 49, location: 'Phường Yên Thường, Quận Gia Lâm', type: 'past' },
   { day: '-6', date: '18-11', aqi: 40, location: 'Xã Xuân Quan, Huyện Văn Giang', type: 'past' },
   { day: '-5', date: '19-11', aqi: 81, location: 'Phường Nhân Chính, Quận Thanh Xuân', type: 'past' },
@@ -12,13 +13,17 @@ const analyticsData = [
   { day: '-3', date: '21-11', aqi: 91, location: 'Phường Quang Trung, Quận Hà Đông', type: 'past' },
   { day: '-2', date: '22-11', aqi: 108, location: 'Phường Tân Dân, TP. Việt Trì', type: 'past' },
   { day: '-1', date: '23-11', aqi: 101, location: 'Phường Sao Đỏ, TP. Chí Linh', type: 'past' },
+  
+  // Hôm nay
   { day: '0', date: '24-11', aqi: 141, location: 'Phường Dịch Vọng, Quận Cầu Giấy', type: 'present' },
-  { day: '+1', date: '25-11', aqi: 130, location: 'Dự báo: Quận Cầu Giấy', type: 'future' },
-  { day: '+2', date: '26-11', aqi: 115, location: 'Dự báo: Quận Thanh Xuân', type: 'future' },
-  { day: '+3', date: '27-11', aqi: 105, location: 'Dự báo: Quận Hà Đông', type: 'future' },
-  { day: '+4', date: '28-11', aqi: 95, location: 'Dự báo: Quận Gia Lâm', type: 'future' },
-  { day: '+5', date: '29-11', aqi: 88, location: 'Dự báo: Huyện Văn Giang', type: 'future' },
-  { day: '+6', date: '30-11', aqi: 120, location: 'Dự báo: Quận Cầu Giấy', type: 'future' },
+  
+  // 6 ngày tới - Dự báo dựa trên các địa điểm user đã đi trong 7 ngày qua
+  { day: '+1', date: '25-11', aqi: 95, location: 'Dự báo: Quận Gia Lâm', type: 'future', note: 'Bạn đã đến đây ngày 17/11' },
+  { day: '+2', date: '26-11', aqi: 85, location: 'Dự báo: Huyện Văn Giang', type: 'future', note: 'Bạn đã đến đây ngày 18/11' },
+  { day: '+3', date: '27-11', aqi: 110, location: 'Dự báo: Quận Thanh Xuân', type: 'future', note: 'Bạn đã đến đây ngày 19/11' },
+  { day: '+4', date: '28-11', aqi: 105, location: 'Dự báo: TP. Bắc Ninh', type: 'future', note: 'Bạn đã đến đây ngày 20/11' },
+  { day: '+5', date: '29-11', aqi: 120, location: 'Dự báo: Quận Hà Đông', type: 'future', note: 'Bạn đã đến đây ngày 21/11' },
+  { day: '+6', date: '30-11', aqi: 130, location: 'Dự báo: TP. Việt Trì', type: 'future', note: 'Bạn đã đến đây ngày 22/11' },
 ];
 const cleanestAreas = [
   { id: 1, name: "Xã Xuân Quan, Huyện Văn Giang, Hưng Yên", aqi: 40, pm25: 10 },
@@ -226,6 +231,11 @@ export default function AnalyticsView () {
               <MapPin size={14} className="mr-1.5 text-blue-500"/> 
               {selectedData.location}
             </div>
+            {selectedData.note && (
+              <div className="mt-2 text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-md inline-block border border-blue-200">
+                💡 {selectedData.note}
+              </div>
+            )}
           </div>
           <div className="text-right ml-4">
             <div className="text-3xl font-black" style={{color: getAQIColor(selectedData.aqi)}}>
@@ -244,7 +254,7 @@ export default function AnalyticsView () {
           </div>
           <div>
             <h2 className="font-bold text-gray-800 text-lg">Thống kê mức độ phơi nhiễm</h2>
-            <p className="text-xs text-gray-500">Phân tích 7 ngày qua và tương lai</p>
+            <p className="text-xs text-gray-500">Dựa trên lộ trình thường ngày của bạn</p>
           </div>
         </div>
 
@@ -268,7 +278,7 @@ export default function AnalyticsView () {
             </div>
 
             <div className="mt-3 text-[11px] bg-white font-semibold inline-block px-3 py-1 rounded-lg text-gray-700 shadow-sm">
-              📍 4 quận đã ghé
+              📍 7 địa điểm đã ghé
             </div>
           </div>
 
@@ -277,7 +287,7 @@ export default function AnalyticsView () {
             <div className="absolute right-0 top-0 p-3 opacity-5"><TrendingUp size={50}/></div>
             <div className="flex items-center space-x-2 mb-2">
               <TrendingUp size={16} className="text-blue-600"/>
-              <div className="text-xs font-bold text-blue-600">7 NGÀY TỚI</div>
+              <div className="text-xs font-bold text-blue-600">6 NGÀY TỚI</div>
             </div>
 
             <div className="text-3xl font-black text-blue-600 mb-1">{futureAvg}</div>
@@ -296,9 +306,10 @@ export default function AnalyticsView () {
           </div>
         </div>
 
-        <div className="mt-4 bg-white border-l-4 border-blue-400 p-3 rounded-r-xl shadow-sm">
-          <p className="text-xs text-gray-600 font-medium">
-            💡 <span className="font-semibold">Lưu ý:</span> Dự báo dựa trên lộ trình di chuyển thường ngày của bạn.
+        <div className="mt-4 bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-400 p-4 rounded-r-xl shadow-sm">
+          <p className="text-xs text-gray-700 font-medium leading-relaxed">
+            <span className="font-bold text-blue-600">💡 Dự báo thông minh:</span> Các địa điểm dự báo dựa trên lộ trình thường ngày của bạn trong 7 ngày qua. 
+            Hệ thống phân tích các vị trí bạn thường lui tới để đưa ra dự báo AQI chính xác hơn.
           </p>
         </div>
         <ExposureCards meanPM25={pastPm25Avg } />
