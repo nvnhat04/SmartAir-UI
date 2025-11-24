@@ -26,12 +26,6 @@ const analyticsData = [
   { day: '+6', date: '30-11', aqi: 130, location: 'Dự báo: TP. Việt Trì', type: 'future', note: 'Bạn đã đến đây ngày 22/11' },
   { day: '+7', date: '01-12', aqi: 125, location: 'Dự báo: TP. Chí Linh', type: 'future', note: 'Bạn đã đến đây ngày 23/11' },
 ];
-const cleanestAreas = [
-  { id: 1, name: "Xã Xuân Quan, Huyện Văn Giang, Hưng Yên", aqi: 40, pm25: 10 },
-  { id: 2, name: "Phường Yên Thường, Quận Gia Lâm, Hà Nội", aqi: 49, pm25: 12 },
-  { id: 3, name: "Phường Nhân Chính, Quận Thanh Xuân, Hà Nội", aqi: 81, pm25: 21 },
-  { id: 4, name: "Phường Suối Hoa, TP. Bắc Ninh, Bắc Ninh", aqi: 87, pm25: 24 },
-];
 // 1. Dữ liệu người dùng (Lấy từ GPS & API)
   const userLocation = {
     name: "Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội",
@@ -255,55 +249,6 @@ const getAQIColor = (aqi) => {
   if (aqi <= 200) return '#ef4444';
   return '#7f1d1d';
 };
-function CleanestPlaces() {
-  return (
-    <div className="mt-6">
-      <div className="flex items-center space-x-3 mb-4">
-        <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2.5 rounded-xl shadow-md">
-          <MapPin size={20} className="text-white"/>
-        </div>
-        <div>
-          <h2 className="font-bold text-gray-800 text-lg">Địa điểm không khí tốt nhất</h2>
-          <p className="text-xs text-gray-500">Gợi ý di chuyển đến khu vực sạch hơn</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col space-y-3">
-        {cleanestAreas.map((p, idx) => (
-          <div
-            key={p.id}
-            className="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-md hover:shadow-xl hover:border-green-300 transition-all duration-300 flex items-center justify-between cursor-pointer hover:-translate-y-1"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
-                {idx + 1}
-              </div>
-
-              <div>
-                <div className="font-bold text-gray-800 text-sm">{p.name}</div>
-                <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
-                  PM2.5: {p.pm25} µg/m³
-                </div>
-              </div>
-            </div>
-
-            <div className="text-right">
-              <div
-                className="font-black text-2xl"
-                style={{ color: getAQIColor(p.aqi) }}
-              >
-                {p.aqi}
-              </div>
-              <div className="text-[11px] text-gray-500 font-semibold uppercase tracking-wide">AQI</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
 export default function AnalyticsView () {
   const [selectedIdx, setSelectedIdx] = useState(7); 
 
@@ -537,8 +482,6 @@ function ExposureCards({ meanPM25 = 48 }) {
           </div> */}
         </CardContent>
       </Card>
-      
-
     </div>
   );
 }

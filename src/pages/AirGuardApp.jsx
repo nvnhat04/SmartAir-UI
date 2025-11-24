@@ -1,4 +1,3 @@
-import L from 'leaflet';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -18,8 +17,7 @@ import {
   Wind,
   X
 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -27,19 +25,10 @@ import {
   ResponsiveContainer,
   XAxis
 } from 'recharts';
-import HeatmapOverlay from '../components/HeatmapOverlay';
 import AIChat from './AIchat';
 import AnalyticsView from './Analytics';
 import NewsView from './News';
-
-// Fix default marker icon issue with Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
+import OSMMap from '../components/OSMMap';
 
 // --- MOCK DATA ---
 const forecastDays = [
@@ -187,24 +176,9 @@ const getStatusColor = (aqi) => {
   if (aqi <= 200) return 'bg-red-500';
   return 'bg-purple-900';
 };
-const stationMarkers = [
-  { id: 1, x: 200, y: 350, aqi: 141, name: 'Cầu Giấy' },
-  { id: 2, x: 170, y: 400, aqi: 91, name: 'Hà Đông' },
-  { id: 3, x: 190, y: 400, aqi: 81, name: 'Thanh Xuân' },
-  { id: 4, x: 260, y: 300, aqi: 87, name: 'Bắc Ninh' },
-  { id: 5, x: 240, y: 320, aqi: 49, name: 'Gia Lâm' },
-  { id: 6, x: 260, y: 380, aqi: 40, name: 'Ecopark' },
-  { id: 7, x: 90, y: 150, aqi: 108, name: 'Phú Thọ' },
-  { id: 8, x: 330, y: 200, aqi: 88, name: 'Bắc Giang' },
-  { id: 9, x: 360, y: 450, aqi: 101, name: 'Hải Dương' },
-].map(generateLocationDetails); // Hydrate data
-
-const mapLabels = [
-  { text: "Hà Nội", x: 180, y: 280 },
-  { text: "Hưng Yên", x: 280, y: 550 },
-  { text: "Bắc Ninh", x: 270, y: 280 },
-  { text: "Vĩnh Phúc", x: 150, y: 150 },
-];
+const stationMarkers = baseStationMarkers.map((marker) =>
+  generateLocationDetails({ ...marker, aqi: marker.baseAqi })
+);
 // Dữ liệu dự báo các ngày
 
 // Dữ liệu biểu đồ nhỏ
@@ -228,6 +202,8 @@ const getGridColor = (row, col) => {
   return '#22c55e'; 
 };
 
+const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+
 const AQIBar = ({ className = "" }) => {
   const colors = [
     "#22c55e", // Tốt
@@ -247,8 +223,10 @@ const AQIBar = ({ className = "" }) => {
     "300+"
   ];
 
+  const containerClass = className && className.length > 0 ? className : 'w-full';
+
   return (
-    <div className={`flex flex-row items-stretch h-6 ${className} overflow-hidden rounded-lg`}>
+    <div className={`flex flex-row items-stretch h-6 overflow-hidden rounded-lg ${containerClass}`}>
       {colors.map((c, i) => (
         <div key={i} className="flex-1 relative" style={{ backgroundColor: c }}>
           <div className="absolute inset-0 flex justify-center items-center">
@@ -268,49 +246,134 @@ const AQIBar = ({ className = "" }) => {
 // );
 
 
-// 1. Dữ liệu người dùng (Lấy từ GPS & API)
-  const userLocation = {
-    name: "Hà Nội (Hiện tại)",
-    aqi: 158
-  };
-
-  
 export default function AirGuardApp() {
   const [activeTab, setActiveTab] = useState('map'); 
   const [detailData, setDetailData] = useState(null); // Data for Detail View
 
   // --- VIEWS ---
 
-  // 1. MAP VIEW WITH OPENSTREETMAP
+  // 1. MAP VIEW với OpenStreetMap
   const MapView = () => {
-    const mapRef = useRef(null);
+    const [userLocation, setUserLocation] = useState(null);
+    const [gpsLoading, setGpsLoading] = useState(false);
+    const [gpsError, setGpsError] = useState(null);
     const [selectedLoc, setSelectedLoc] = useState(null);
-    const [selectedDay, setSelectedDay] = useState(0); // 0 = Hôm nay
+    const [selectedDay, setSelectedDay] = useState(0);
     const [isForecastOpen, setIsForecastOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    
-    // Enhanced search results with address matching
-    const searchResults = searchQuery ? baseStationMarkers.filter(marker => {
-      const query = searchQuery.toLowerCase();
-      return marker.name.toLowerCase().includes(query) ||
-             marker.address.toLowerCase().includes(query) ||
-             marker.district.toLowerCase().includes(query) ||
-             marker.city.toLowerCase().includes(query);
-    }).slice(0, 5) : [];
-    
-    const handleSearchResultClick = (result) => {
-      setSearchQuery('');
-      setIsSearchOpen(false);
-      if (mapRef.current) {
-        mapRef.current.setView([result.lat, result.lng], 12, { animate: true });
+    const [osmResults, setOsmResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchError, setSearchError] = useState(null);
+    const searchAbortRef = useRef(null);
+
+    const localSearchMatches = searchQuery
+      ? baseStationMarkers.filter(marker => {
+          const query = searchQuery.toLowerCase();
+          return marker.name.toLowerCase().includes(query) ||
+                 marker.address.toLowerCase().includes(query) ||
+                 marker.district.toLowerCase().includes(query) ||
+                 marker.city.toLowerCase().includes(query);
+        }).slice(0, 5)
+      : [];
+
+    const combinedSearchResults = [
+      ...localSearchMatches.map(marker => ({
+        id: `station-${marker.id}`,
+        type: 'station',
+        name: marker.name,
+        address: marker.address ?? marker.city,
+        lat: marker.lat,
+        lng: marker.lng,
+        raw: marker
+      })),
+      ...osmResults
+    ];
+
+    const fetchOsmLocations = async (query) => {
+      if (query.length < 3) {
+        setOsmResults([]);
+        setSearchError(null);
+        return;
+      }
+
+      try {
+        if (searchAbortRef.current) {
+          searchAbortRef.current.abort();
+        }
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+        setSearchLoading(true);
+        setSearchError(null);
+
+        const params = new URLSearchParams({
+          format: 'json',
+          addressdetails: '1',
+          polygon_geojson: '0',
+          limit: '5',
+          countrycodes: 'vn',
+          dedupe: '1',
+          q: query
+        });
+
+        const response = await fetch(`${NOMINATIM_ENDPOINT}?${params.toString()}`, {
+          headers: {
+            'Accept-Language': 'vi',
+            'User-Agent': 'SmartAir-UI/1.0 (+https://github.com/nvnhat04/SmartAir-UI)'
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error('Không thể tìm kiếm địa điểm');
+        }
+
+        const data = await response.json();
+        const mapped = data.map(item => {
+          const city = item.address?.city || item.address?.town || item.address?.village || '';
+          const district = item.address?.city_district || item.address?.district || '';
+          const state = item.address?.state || '';
+          const formattedAddress = [district, city, state].filter(Boolean).join(', ');
+
+          return {
+            id: `osm-${item.place_id}`,
+            type: 'osm',
+            name: item.display_name?.split(',')[0] || item.display_name,
+            address: formattedAddress || item.display_name,
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon)
+          };
+        });
+
+        setOsmResults(mapped);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error(error);
+          setSearchError('Không tìm thấy địa điểm phù hợp');
+        }
+      } finally {
+        setSearchLoading(false);
       }
     };
-    
-    // Sinh dữ liệu marker dựa trên ngày được chọn
+
+    useEffect(() => {
+      if (!isSearchOpen || !searchQuery.trim()) {
+        setOsmResults([]);
+        setSearchError(null);
+        return;
+      }
+
+      const debounceId = setTimeout(() => {
+        fetchOsmLocations(searchQuery.trim());
+      }, 450);
+
+      return () => clearTimeout(debounceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, isSearchOpen]);
+
     const currentMarkers = baseStationMarkers.map(m => {
-      let change = (selectedDay * 15) * (m.id % 2 === 0 ? -1 : 1);
-      let newAqi = Math.max(20, Math.min(300, m.baseAqi + change));
+      const change = (selectedDay * 15) * (m.id % 2 === 0 ? -1 : 1);
+      const newAqi = Math.max(20, Math.min(300, m.baseAqi + change));
       return generateLocationDetails({ ...m, aqi: newAqi });
     });
 
@@ -319,23 +382,84 @@ export default function AirGuardApp() {
       setSelectedLoc(fullData);
     };
 
-    const handleZoomIn = () => {
-      if (mapRef.current) {
-        mapRef.current.zoomIn();
-      }
-    };
-
-    const handleZoomOut = () => {
-      if (mapRef.current) {
-        mapRef.current.zoomOut();
-      }
-    };
-
     const handleLocateMe = () => {
-      // Center on Hanoi
-      if (mapRef.current) {
-        mapRef.current.setView([21.028511, 105.804817], 11, { animate: true });
+      if (!navigator.geolocation) {
+        setGpsError('Trình duyệt không hỗ trợ GPS');
+        return;
       }
+
+      setGpsLoading(true);
+      setGpsError(null);
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude, accuracy });
+          setGpsLoading(false);
+        },
+        (error) => {
+          let errorMsg = 'Không thể lấy vị trí GPS';
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg = 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng bật Location trong Settings';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg = 'Thông tin vị trí không khả dụng. Hãy thử lại';
+              break;
+            case error.TIMEOUT:
+              errorMsg = 'Hết thời gian chờ. Đang thử lại với độ chính xác thấp hơn...';
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const { latitude, longitude, accuracy } = position.coords;
+                  setUserLocation({ lat: latitude, lng: longitude, accuracy });
+                  setGpsLoading(false);
+                },
+                () => {
+                  setGpsError('Không thể lấy vị trí. Vui lòng kiểm tra GPS/Location');
+                  setGpsLoading(false);
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+              );
+              return;
+            default:
+              break;
+          }
+
+          setGpsError(errorMsg);
+          setGpsLoading(false);
+        },
+        options
+      );
+    };
+
+    useEffect(() => {
+      return () => {
+        if (searchAbortRef.current) {
+          searchAbortRef.current.abort();
+        }
+      };
+    }, []);
+
+    const handleSearchResultClick = (result) => {
+      setUserLocation({ lat: result.lat, lng: result.lng });
+
+      if (result.type === 'station' && result.raw) {
+        setSelectedLoc(result.raw);
+      } else {
+        setSelectedLoc(null);
+      }
+
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setOsmResults([]);
+      setSearchError(null);
     };
 
     const goToDetail = () => {
@@ -344,231 +468,187 @@ export default function AirGuardApp() {
     };
 
     return (
-      <div className="h-full relative overflow-hidden select-none font-sans w-full flex flex-col">
-          {/* HEADER OVERLAY */}
-       <div className="absolute top-4 left-4 right-4 z-[1000] flex flex-col space-y-2 pointer-events-none">
+      <div className='h-full relative bg-gray-100 overflow-hidden select-none font-sans w-full flex flex-col'>
+        <div className='absolute top-4 left-4 right-4 z-[1000] flex flex-col space-y-2 pointer-events-none'>
+          <div className='flex items-center space-x-2 pointer-events-auto'>
+            <div className={`flex-1 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-white/50 transition-all duration-300 flex items-center px-3 py-2 ${isSearchOpen ? 'ring-2 ring-blue-500' : ''}`}>
+              <Search size={18} className='text-gray-500 mr-2' />
+              <input
+                type='text'
+                placeholder='Tìm quận, phường, xã...'
+                className='bg-transparent outline-none text-sm flex-1 text-gray-800'
+                value={searchQuery}
+                onFocus={() => setIsSearchOpen(true)}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {isSearchOpen && (
+                <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); setOsmResults([]); setSearchError(null); }}>
+                  <X size={16} className='text-gray-400' />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setIsForecastOpen(!isForecastOpen)}
+              className={`flex items-center space-x-1 px-3 py-1 rounded-full shadow-lg border transition-all ${isForecastOpen ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/90 backdrop-blur-md text-gray-700 border-white/50'}`}
+            >
+              <Calendar size={16} />
+              <span className='text-xs font-bold'>
+                {forecastDays[selectedDay].label} - {forecastDays[selectedDay].date}
+              </span>
+              <ChevronDown size={14} className={`transition-transform ${isForecastOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <button
+              onClick={handleLocateMe}
+              disabled={gpsLoading}
+              className={`w-8 h-8 rounded-full shadow-xl flex items-center justify-center transition-all ring-4 ring-blue-200 ${gpsLoading ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'}`}
+            >
+              {gpsLoading ? (
+                <div className='w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin' />
+              ) : (
+                <Crosshair size={15} />
+              )}
+            </button>
+          </div>
 
-  {/* HÀNG 1: SEARCH + TIME TAB */}
-  <div className="flex items-center space-x-2 pointer-events-auto">
+          {isSearchOpen && searchQuery && (
+            <div className='pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-100 max-h-60 overflow-y-auto p-2 animate-fade-in space-y-1'>
+              {combinedSearchResults.length > 0 && combinedSearchResults.map(res => (
+                <div
+                  key={res.id}
+                  onClick={() => handleSearchResultClick(res)}
+                  className='p-2 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center space-x-2'
+                >
+                  <MapPin size={14} className={res.type === 'station' ? 'text-green-500' : 'text-blue-500'} />
+                  <div className='flex flex-col'>
+                    <div className='text-sm font-bold text-gray-800'>{res.name}</div>
+                    {res.address && (
+                      <div className='text-xs text-gray-500'>{res.address}</div>
+                    )}
+                    <span className='text-[10px] uppercase tracking-wide font-semibold text-gray-400'>
+                      {res.type === 'station' ? 'Trạm quan trắc' : 'Dữ liệu OSM'}
+                    </span>
+                  </div>
+                </div>
+              ))}
 
-    {/* Search Bar */}
-    <div className={`flex-1 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-white/50 
-        transition-all duration-300 flex items-center px-3 py-2
-        ${isSearchOpen ? 'ring-2 ring-blue-500' : ''}`}>
+              {searchLoading && (
+                <div className='p-3 text-center text-sm text-blue-500'>
+                  Đang tìm kiếm địa điểm...
+                </div>
+              )}
 
-      <Search size={18} className="text-gray-500 mr-2" />
-      <input 
-        type="text"
-        placeholder="Tìm quận, phường, xã..."
-        className="bg-transparent outline-none text-sm flex-1 text-gray-800"
-        value={searchQuery}
-        onFocus={() => setIsSearchOpen(true)}
-        onChange={(e) => setSearchQuery(e.target.value)}
-      />
+              {!searchLoading && combinedSearchResults.length === 0 && !searchError && (
+                <div className='p-3 text-center text-sm text-gray-400'>
+                  {searchQuery.trim().length < 3
+                    ? 'Nhập ít nhất 3 ký tự để tìm kiếm'
+                    : 'Không tìm thấy địa điểm phù hợp'}
+                </div>
+              )}
 
-      {isSearchOpen && (
-        <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}>
-          <X size={16} className="text-gray-400" />
-        </button>
-      )}
-    </div>
+              {searchError && (
+                <div className='p-3 text-center text-sm text-red-500'>
+                  {searchError}
+                </div>
+              )}
+            </div>
+          )}
 
-    {/* Time Tab Button (Forecast chọn ngày) */}
-    <button 
-      onClick={() => setIsForecastOpen(!isForecastOpen)}
-      className={`flex items-center space-x-1 px-3 py-1 rounded-full shadow-lg border transition-all 
-        ${isForecastOpen ? 'bg-blue-600 text-white border-blue-600' 
-                         : 'bg-white/90 backdrop-blur-md text-gray-700 border-white/50'}`}
-    >
-      <Calendar size={16} />
-      <span className="text-xs font-bold">
-        {forecastDays[selectedDay].label} - {forecastDays[selectedDay].date}
-      </span>
-      <ChevronDown size={14} className={`transition-transform ${isForecastOpen ? 'rotate-180' : ''}`} />
-    </button>
-    <button onClick={handleLocateMe} className="w-8 h-8 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all ring-4 ring-blue-200">
-            <Crosshair size={15} />
-    </button>    
-  </div>
-
-  {/* Search Results Dropdown */}
-  {isSearchOpen && searchQuery && (
-    <div className="pointer-events-auto bg-white rounded-2xl shadow-xl border border-gray-100 
-        max-h-48 overflow-y-auto p-2 animate-fade-in">
-      {searchResults.length > 0 ? (
-        searchResults.map(res => (
-          <div 
-            key={res.id}
-            onClick={() => handleSearchResultClick(res)}
-            className="p-2 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center space-x-2"
-          >
-            <MapPin size={14} className="text-gray-400" />
-            <div>
-              <div className="text-sm font-bold text-gray-800">{res.name}</div>
-              <div className="text-xs text-gray-500">{res.address}</div>
+          <div className={`pointer-events-auto overflow-hidden transition-all duration-300 ease-in-out origin-top-right ${isForecastOpen ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className='bg-white/80 backdrop-blur-md rounded-2xl p-2 shadow-xl border border-white/50 overflow-x-auto no-scrollbar'>
+              <div className='flex space-x-2 w-max'>
+                {forecastDays.map(day => (
+                  <button
+                    key={day.id}
+                    onClick={() => { setSelectedDay(day.id); setIsForecastOpen(false); }}
+                    className={`flex flex-col items-center px-3 py-1.5 rounded-xl transition-all ${selectedDay === day.id ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-white/50 text-gray-600'}`}
+                  >
+                    <span className='text-[9px] font-medium opacity-80'>{day.date}</span>
+                    <span className='text-xs font-bold whitespace-nowrap'>{day.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        ))
-      ) : (
-        <div className="p-3 text-center text-sm text-gray-400">
-          Không tìm thấy địa điểm
         </div>
-      )}
-    </div>
-  )}
 
-  {/* Forecast Dropdown */}
-  <div className={`pointer-events-auto overflow-hidden transition-all duration-300 ease-in-out 
-      origin-top-right ${isForecastOpen ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}>
-    
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-2 shadow-xl border border-white/50 overflow-x-auto no-scrollbar">
-      <div className="flex space-x-2 w-max">
-        {forecastDays.map(day => (
-          <button 
-            key={day.id}
-            onClick={() => { setSelectedDay(day.id); setIsForecastOpen(false); }}
-            className={`flex flex-col items-center px-3 py-1.5 rounded-xl transition-all 
-              ${selectedDay === day.id 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'hover:bg-white/50 text-gray-600'}`}
-          >
-            <span className="text-[9px] font-medium opacity-80">{day.date}</span>
-            <span className="text-xs font-bold whitespace-nowrap">{day.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+        <div className='absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20 bg-white/80 backdrop-blur rounded-xl p-2 shadow-md border border-white/50'>
+          <AQIBar className='w-[280px]' />
+        </div>
 
-  </div>
-</div>
+        <div className='flex-1 w-full h-full relative'>
+          <OSMMap
+            center={userLocation ? [userLocation.lat, userLocation.lng] : [21.0285, 105.8542]}
+            zoom={userLocation ? 13 : 11}
+            markers={currentMarkers}
+            userLocation={userLocation}
+            onMarkerClick={handleMarkerClick}
+            selectedDay={selectedDay}
+            showHeatmap={true}
+          />
+        </div>
 
-
-
-        {/* AQI Legend Bar */}
-        <div className="absolute bottom-10 left-10 right-10 z-[1000] bg-white/90 backdrop-blur-md rounded-xl p-1 shadow-lg border border-white/50">
-          <div className="flex flex-col gap-1 ">
-            {/* <div className="text-[8px] font-bold text-gray-600 text-center mb-1">Chỉ số AQI</div> */}
-            <AQIBar className="w-full" />
+        {gpsError && (
+          <div className='absolute top-20 left-1/2 transform -translate-x-1/2 z-[1000] bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg text-sm shadow-lg animate-fade-in'>
+            {gpsError}
+            <button
+              onClick={() => setGpsError(null)}
+              className='ml-2 text-red-700 hover:text-red-900'
+            >
+              <X size={14} />
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* OpenStreetMap with Heatmap */}
-        <div className="flex-1 w-full h-full relative">
-          <MapContainer
-            center={[21.028511, 105.804817]}
-            zoom={10}
-            ref={mapRef}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            
-            {/* Heatmap Overlay */}
-            <HeatmapOverlay selectedDay={selectedDay} />
-            
-            {/* Custom Markers */}
-            {currentMarkers.map((marker) => {
-              const getAQIColor = (aqi) => {
-                if (aqi <= 50) return '#22c55e';
-                if (aqi <= 100) return '#eab308';
-                if (aqi <= 150) return '#f97316';
-                if (aqi <= 200) return '#ef4444';
-                return '#7f1d1d';
-              };
-              
-              const color = getAQIColor(marker.aqi);
-              const customIcon = L.divIcon({
-                className: 'custom-marker',
-                html: `
-                  <div class="relative group">
-                    ${marker.aqi > 150 ? '<div class="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>' : ''}
-                    <div class="relative w-10 h-10 rounded-full border-[3px] border-white shadow-lg flex items-center justify-center text-[10px] font-bold text-white transition-colors duration-500" style="background-color: ${color};">
-                      ${marker.aqi}
-                    </div>
-                  </div>
-                `,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-              });
-              
-              return (
-                <Marker
-                  key={marker.id}
-                  position={[marker.lat, marker.lng]}
-                  icon={customIcon}
-                  eventHandlers={{
-                    click: () => handleMarkerClick(marker)
-                  }}
-                >
-                  <Popup>
-                    <div className="text-center min-w-[200px]">
-                      <div className="font-bold text-gray-800 mb-1">{marker.name}</div>
-                      <div className="text-xs text-gray-600 mb-2">{marker.address}</div>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="text-sm font-bold" style={{ color }}>AQI: {marker.aqi}</div>
-                        <span className="text-xs text-gray-500">• {marker.status}</span>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
-        </div>
-
-        {/* Floating Controls */}
-        {/* <div className="absolute top-40 right-4 flex flex-col space-y-3 z-[1000]">
-          <button onClick={handleZoomIn} className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100">
-            <Plus size={20} />
-          </button>
-          <button onClick={handleZoomOut} className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100">
-            <Minus size={20} />
-          </button>
-          <button onClick={handleLocateMe} className="w-12 h-12 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all ring-4 ring-blue-200">
-            <Crosshair size={20} />
-          </button>
-        </div> */}
-
-        {/* Summary Bottom Sheet */}
         {selectedLoc && (
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-5 z-[1000] animate-slide-up">
-             <div className="mb-4">
-               <div className="flex items-start justify-between mb-2">
-                 <div className="flex-1">
-                   <h3 className="text-xl font-bold text-gray-900">{selectedLoc.name}</h3>
-                   {selectedLoc.address && (
-                     <div className="flex items-start mt-1 text-xs text-gray-500">
-                       <MapPin size={12} className="mr-1 mt-0.5 flex-shrink-0" />
-                       <span>{selectedLoc.address}</span>
-                     </div>
-                   )}
-                 </div>
-                 <div className="text-right ml-3">
-                   <div className="flex items-center text-gray-500 text-sm"><Thermometer size={14} className="mr-1"/> {selectedLoc.temp}°C</div>
-                   <div className="flex items-center text-gray-500 text-sm"><Droplets size={14} className="mr-1"/> {selectedLoc.humidity}%</div>
-                 </div>
-               </div>
-               <div className="flex items-center space-x-2 mt-2">
-                 <span className="px-2 py-0.5 rounded text-xs font-bold text-white" style={{backgroundColor: selectedLoc.color}}>AQI {selectedLoc.aqi}</span>
-                 <span className="text-sm text-gray-500 font-medium">• {selectedLoc.status}</span>
-                 {selectedLoc.district && (
-                   <span className="text-xs text-gray-400">• {selectedLoc.district}</span>
-                 )}
-               </div>
-             </div>
-             
-             <div className="bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3">
-                <div className="text-2xl">{selectedLoc.advice.icon}</div>
-                <div className="text-sm text-gray-600 leading-tight pt-1">{selectedLoc.advice.text}</div>
-             </div>
+          <div className='absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-30 animate-slide-up'>
+            <div className='flex justify-center pt-3 pb-2'>
+              <div className='w-12 h-1.5 bg-gray-300 rounded-full'></div>
+            </div>
+            <div className='flex items-center justify-between px-5 pb-2'>
+              <button
+                onClick={() => setSelectedLoc(null)}
+                className='p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors'
+                title='Đóng'
+              >
+                <X size={20} className='text-gray-600' />
+              </button>
+              <div className='text-xs text-gray-400 font-medium'>Thông tin trạm đo</div>
+              <div className='w-8'></div>
+            </div>
+            <div className='px-5 pb-5'>
+              <div className='flex justify-between items-start mb-4'>
+                <div className='flex-1'>
+                  <h3 className='text-xl font-bold text-gray-900'>{selectedLoc.name}</h3>
+                  {selectedLoc.address && (
+                    <div className='flex items-start mt-1 text-xs text-gray-500'>
+                      <MapPin size={12} className='mr-1 mt-0.5 flex-shrink-0' />
+                      <span>{selectedLoc.address}</span>
+                    </div>
+                  )}
+                  <div className='flex items-center flex-wrap gap-2 mt-2'>
+                    <span className='px-2 py-0.5 rounded text-xs font-bold text-white' style={{ backgroundColor: selectedLoc.color }}>AQI {selectedLoc.aqi}</span>
+                    <span className='text-sm text-gray-500 font-medium'>• {selectedLoc.status}</span>
+                    {selectedLoc.district && (
+                      <span className='text-xs text-gray-400'>• {selectedLoc.district}</span>
+                    )}
+                  </div>
+                </div>
+                <div className='text-right ml-3'>
+                  <div className='flex items-center text-gray-500 text-sm'><Thermometer size={14} className='mr-1' /> {selectedLoc.temp}°C</div>
+                  <div className='flex items-center text-gray-500 text-sm'><Droplets size={14} className='mr-1' /> {selectedLoc.humidity}%</div>
+                </div>
+              </div>
 
-             <button onClick={goToDetail} className="w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-gray-800 transition-transform active:scale-95">
-               <span>Xem chi tiết & dự báo</span>
-               <ChevronRight size={16} />
-             </button>
+              <div className='bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3'>
+                <div className='text-2xl'>{selectedLoc.advice.icon}</div>
+                <div className='text-sm text-gray-600 leading-tight pt-1'>{selectedLoc.advice.text}</div>
+              </div>
+
+              <button onClick={goToDetail} className='w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-gray-800 transition-transform active:scale-95'>
+                <span>Xem chi tiết & dự báo</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>
