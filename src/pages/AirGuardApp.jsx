@@ -14,6 +14,7 @@ import {
 import NewsView from './News';
 import AnalyticsView from './Analytics';
 import AIChat from './AIchat';
+import OSMMap from '../components/OSMMap';
 
 // --- MOCK DATA ---
 const forecastDays = [
@@ -26,15 +27,15 @@ const forecastDays = [
   { id: 6, label: 'Thứ 2', date: '25/11' },
 ];
 const baseStationMarkers = [
-  { id: 1, x: 200, y: 350, baseAqi: 141, name: 'Cầu Giấy' },
-  { id: 2, x: 170, y: 400, baseAqi: 91, name: 'Hà Đông' },
-  { id: 3, x: 190, y: 400, baseAqi: 81, name: 'Thanh Xuân' },
-  { id: 4, x: 260, y: 300, baseAqi: 87, name: 'Bắc Ninh' },
-  { id: 5, x: 240, y: 320, baseAqi: 49, name: 'Gia Lâm' },
-  { id: 6, x: 260, y: 380, baseAqi: 40, name: 'Ecopark' },
-  { id: 7, x: 90, y: 150, baseAqi: 108, name: 'Phú Thọ' },
-  { id: 8, x: 330, y: 200, baseAqi: 88, name: 'Bắc Giang' },
-  { id: 9, x: 360, y: 450, baseAqi: 101, name: 'Hải Dương' },
+  { id: 1, x: 200, y: 350, baseAqi: 141, name: 'Cầu Giấy', lat: 21.0367, lng: 105.8014 },
+  { id: 2, x: 170, y: 400, baseAqi: 91, name: 'Hà Đông', lat: 21.0056, lng: 105.7639 },
+  { id: 3, x: 190, y: 400, baseAqi: 81, name: 'Thanh Xuân', lat: 21.0014, lng: 105.8081 },
+  { id: 4, x: 260, y: 300, baseAqi: 87, name: 'Bắc Ninh', lat: 21.1864, lng: 106.0763 },
+  { id: 5, x: 240, y: 320, baseAqi: 49, name: 'Gia Lâm', lat: 21.0233, lng: 105.9389 },
+  { id: 6, x: 260, y: 380, baseAqi: 40, name: 'Ecopark', lat: 20.9167, lng: 106.0167 },
+  { id: 7, x: 90, y: 150, baseAqi: 108, name: 'Phú Thọ', lat: 21.3228, lng: 105.4019 },
+  { id: 8, x: 330, y: 200, baseAqi: 88, name: 'Bắc Giang', lat: 21.2731, lng: 106.1946 },
+  { id: 9, x: 360, y: 450, baseAqi: 101, name: 'Hải Dương', lat: 20.9373, lng: 106.3146 },
 ];
 const healthAdvice = {
   good: { text: "Không khí tuyệt vời! Hãy tận hưởng các hoạt động ngoài trời.", icon: "😊", action: "Mở cửa sổ" },
@@ -126,7 +127,6 @@ const AQIBar = ({ className = "" }) => {
     "#7f1d1d", // Nguy hiểm
   ];
 
-  // Bạn đổi range theo PM2.5 hoặc AQI tùy ý
   const ranges = [
     "0–50",
     "51–100",
@@ -137,7 +137,7 @@ const AQIBar = ({ className = "" }) => {
   ];
 
   return (
-    <div className={`flex flex-row items-center h-5 w-full ${className} space-x-[1px]`}>
+    <div className={`flex flex-row items-center h-5 ${className || 'w-full'} space-x-[1px]`}>
       {colors.map((c, i) => (
         <div key={i} className="flex-1 relative h-full">
           <div
@@ -163,64 +163,119 @@ export default function AirGuardApp() {
 
   // --- VIEWS ---
 
-  // 1. MAP VIEW IMPROVED
+  // 1. MAP VIEW với OpenStreetMap
   const MapView = () => {
-    const mapRef = useRef(null);
-    const [zoom, setZoom] = useState(1);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    // State cho GPS location
+    const [userLocation, setUserLocation] = useState(null);
+    const [gpsLoading, setGpsLoading] = useState(false);
+    const [gpsError, setGpsError] = useState(null);
+    
+    // Các state cũ
     const [selectedLoc, setSelectedLoc] = useState(null);
-    const [heading, setHeading] = useState(0);
-    const [selectedDay, setSelectedDay] = useState(0); // 0 = Hôm nay
+    const [selectedDay, setSelectedDay] = useState(0);
     const [isForecastOpen, setIsForecastOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     
+    // Ref cho Leaflet map instance
+    const [mapInstance, setMapInstance] = useState(null);
+    
     // Sinh dữ liệu marker dựa trên ngày được chọn
     const currentMarkers = baseStationMarkers.map(m => {
-      // Giả lập thay đổi AQI theo ngày: Ngày chẵn tăng, lẻ giảm, random chút
       let change = (selectedDay * 15) * (m.id % 2 === 0 ? -1 : 1);
-      // Giới hạn AQI
       let newAqi = Math.max(20, Math.min(300, m.baseAqi + change));
       return generateLocationDetails({ ...m, aqi: newAqi });
     });
 
-    useEffect(() => {
-      const interval = setInterval(() => setHeading(p => p + (Math.random() * 10 - 5)), 1000);
-      return () => clearInterval(interval);
-    }, []);
-
-    const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 4));
-    const handleZoomOut = () => {
-      setZoom(prev => {
-        const newZoom = Math.max(prev - 0.5, 1);
-        if (newZoom === 1) {
-          setOffset({ x: 0, y: 0 });
-          setSelectedLoc(null);
-        }
-        return newZoom;
-      });
-    };
-
+    // GPS Location Handler - Improved
     const handleLocateMe = () => {
-      const myX = 200;
-      const myY = 300;
-      focusOnPoint(myX, myY, 2.5);
+      if (!navigator.geolocation) {
+        setGpsError('Trình duyệt không hỗ trợ GPS');
+        return;
+      }
+
+      setGpsLoading(true);
+      setGpsError(null);
+
+      // Try high accuracy first
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log(`GPS Position: ${latitude}, ${longitude}, Accuracy: ${accuracy}m`);
+          
+          setUserLocation({ 
+            lat: latitude, 
+            lng: longitude,
+            accuracy: accuracy 
+          });
+          setGpsLoading(false);
+        },
+        (error) => {
+          console.error('GPS Error:', error);
+          let errorMsg = 'Không thể lấy vị trí GPS';
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMsg = 'Bạn đã từ chối quyền truy cập vị trí. Vui lòng bật Location trong Settings';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMsg = 'Thông tin vị trí không khả dụng. Hãy thử lại';
+              break;
+            case error.TIMEOUT:
+              errorMsg = 'Hết thời gian chờ. Đang thử lại với độ chính xác thấp hơn...';
+              // Fallback: Try with lower accuracy
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const { latitude, longitude, accuracy } = position.coords;
+                  setUserLocation({ lat: latitude, lng: longitude, accuracy });
+                  setGpsLoading(false);
+                },
+                () => {
+                  setGpsError('Không thể lấy vị trí. Vui lòng kiểm tra GPS/Location');
+                  setGpsLoading(false);
+                },
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+              );
+              return;
+          }
+          
+          setGpsError(errorMsg);
+          setGpsLoading(false);
+        },
+        options
+      );
     };
 
-    const focusOnPoint = (x, y, zLevel) => {
-      if (!mapRef.current) return;
-      const containerW = mapRef.current.offsetWidth;
-      const containerH = mapRef.current.offsetHeight;
-      const newOffsetX = (containerW / 2) - (x * zLevel);
-      const newOffsetY = (containerH / 2) - (y * zLevel);
-      setZoom(zLevel);
-      setOffset({ x: newOffsetX, y: newOffsetY });
-    };
+    // Search functionality
+    const searchLocations = [
+      { id: 1, name: 'Cầu Giấy', address: 'Quận Cầu Giấy, Hà Nội', lat: 21.0367, lng: 105.8014 },
+      { id: 2, name: 'Hà Đông', address: 'Quận Hà Đông, Hà Nội', lat: 21.0056, lng: 105.7639 },
+      { id: 3, name: 'Thanh Xuân', address: 'Quận Thanh Xuân, Hà Nội', lat: 21.0014, lng: 105.8081 },
+      { id: 4, name: 'Bắc Ninh', address: 'Tỉnh Bắc Ninh', lat: 21.1864, lng: 106.0763 },
+      { id: 5, name: 'Gia Lâm', address: 'Huyện Gia Lâm, Hà Nội', lat: 21.0233, lng: 105.9389 },
+      { id: 6, name: 'Ecopark', address: 'Hưng Yên', lat: 20.9167, lng: 106.0167 },
+      { id: 7, name: 'Phú Thọ', address: 'Tỉnh Phú Thọ', lat: 21.3228, lng: 105.4019 },
+      { id: 8, name: 'Bắc Giang', address: 'Tỉnh Bắc Giang', lat: 21.2731, lng: 106.1946 },
+      { id: 9, name: 'Hải Dương', address: 'Tỉnh Hải Dương', lat: 20.9373, lng: 106.3146 },
+    ];
 
-    const onMarkerClick = (e, loc) => {
-      e.stopPropagation();
-      setSelectedLoc(loc);
-      focusOnPoint(loc.x, loc.y, 2.5);
+    const searchResults = searchQuery
+      ? searchLocations.filter(loc => 
+          loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          loc.address.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : [];
+
+    const handleSearchResultClick = (result) => {
+      setUserLocation({ lat: result.lat, lng: result.lng });
+      setIsSearchOpen(false);
+      setSearchQuery('');
     };
 
     const goToDetail = () => {
@@ -228,8 +283,21 @@ export default function AirGuardApp() {
       setActiveTab('detail');
     };
 
+    // Zoom controls
+    const handleZoomIn = () => {
+      if (mapInstance) {
+        mapInstance.zoomIn();
+      }
+    };
+
+    const handleZoomOut = () => {
+      if (mapInstance) {
+        mapInstance.zoomOut();
+      }
+    };
+
     return (
-      <div className="h-full relative bg-[#eefbf3] overflow-hidden select-none font-sans w-full flex flex-col">
+      <div className="h-full relative bg-gray-100 overflow-hidden select-none font-sans w-full flex flex-col">
           {/* HEADER OVERLAY */}
        <div className="absolute top-4 left-4 right-4 z-30 flex flex-col space-y-2 pointer-events-none">
 
@@ -327,120 +395,118 @@ export default function AirGuardApp() {
 
 
 
-       <div className="absolute bottom-10 left-20 z-20 bg-white/80 backdrop-blur rounded-xl p-2 shadow-md border border-white/50
-    flex flex-row items-center gap-2 rounded-xl">
-      
-      {/* <span className="text-[8px] font-bold text-green-600">Tốt</span> */}
+       {/* AQI Bar Legend */}
+       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20 bg-white/80 backdrop-blur rounded-xl p-2 shadow-md border border-white/50">
+         <AQIBar className="w-[280px]" />
+       </div>
 
-      <AQIBar className="w-60" />
-
-      {/* <span className="text-[8px] font-bold text-red-800">Xấu</span> */}
-
-    </div>
-
-
-
-        {/* Map Canvas */}
-        <div 
-          ref={mapRef} 
-          onClick={() => { setSelectedLoc(null); }}
-          className="flex-1 w-full h-full cursor-grab active:cursor-grabbing overflow-hidden relative"
-        >
-          <div 
-            className="absolute top-0 left-0 w-full h-full transition-all duration-700 cubic-bezier(0.25, 0.46, 0.45, 0.94)"
-            style={{ 
-              transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, 
-              transformOrigin: '0 0' 
+        {/* Map Canvas - OpenStreetMap */}
+        <div className="flex-1 w-full h-full relative">
+          <OSMMap
+            center={userLocation ? [userLocation.lat, userLocation.lng] : [21.0285, 105.8542]}
+            zoom={userLocation ? 13 : 11}
+            markers={currentMarkers}
+            userLocation={userLocation}
+            onMarkerClick={(marker) => {
+              setSelectedLoc(marker);
             }}
-          >
-             {/* Background Grid - Dynamic Color based on Selected Day */}
-            <svg className="absolute inset-0 w-[500px] h-[800px] opacity-80 transition-all duration-500">
-               {Array.from({ length: 22 }).map((_, r) => Array.from({ length: 14 }).map((_, c) => 
-                 <rect 
-                   key={`${r}-${c}`} 
-                   x={c * 40} y={r * 40} 
-                   width={40} height={40} 
-                   fill={getGridColor(r, c, selectedDay)} 
-                   stroke="white" strokeWidth="0.5" 
-                   className="transition-colors duration-700" // Smooth color transition
-                 />
-               ))}
-            </svg>
-
-            {/* Map Labels */}
-            {mapLabels.map((lbl, idx) => (
-              <div key={idx} className="absolute text-white/90 font-bold text-sm drop-shadow-md text-center whitespace-nowrap pointer-events-none" style={{ top: lbl.y, left: lbl.x, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                {lbl.text}
-              </div>
-            ))}
-
-            {/* Markers - Updated based on Day */}
-            {currentMarkers.map((marker) => (
-              <div 
-                key={marker.id} 
-                onClick={(e) => onMarkerClick(e, marker)} 
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out hover:scale-110 z-10 cursor-pointer group" 
-                style={{ top: marker.y, left: marker.x }}
-              >
-                 {/* Ripple Effect for High AQI */}
-                 {marker.aqi > 150 && <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>}
-                 <div className="relative w-10 h-10 rounded-full border-[3px] border-white shadow-lg flex items-center justify-center text-[10px] font-bold text-white transition-colors duration-500" style={{ backgroundColor: marker.color }}>
-                    {marker.aqi}
-                 </div>
-                 {/* Tooltip on Hover (Desktop) / Zoomed */}
-                 <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-white/90 px-2 py-1 rounded text-[8px] font-bold text-gray-800 whitespace-nowrap shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    {marker.name}
-                 </div>
-              </div>
-            ))}
-            
-            {/* User GPS Location */}
-            <div className="absolute top-[300px] left-[200px] transform -translate-x-1/2 -translate-y-1/2 z-0">
-                <div className="w-24 h-24 bg-blue-500/20 rounded-full animate-pulse absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
-                <div className="w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-sm relative z-10"></div>
-            </div>
-          </div>
+            selectedDay={selectedDay}
+            onMapReady={(map) => setMapInstance(map)}
+            showHeatmap={true}
+          />
         </div>
 
         {/* Floating Controls */}
         <div className="absolute top-20 right-4 flex flex-col space-y-3 z-20">
-          <button onClick={handleZoomIn} className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100">
+          <button 
+            onClick={handleZoomIn}
+            className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
+          >
             <Plus size={24} />
           </button>
-          <button onClick={handleZoomOut} className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100">
+          <button 
+            onClick={handleZoomOut}
+            className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
+          >
             <Minus size={24} />
           </button>
-          <button onClick={handleLocateMe} className="w-12 h-12 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all ring-4 ring-blue-200">
-            <Crosshair size={24} />
+          <button 
+            onClick={handleLocateMe} 
+            disabled={gpsLoading}
+            className={`w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all border border-gray-100
+              ${gpsLoading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 ring-4 ring-blue-200'}`}
+          >
+            {gpsLoading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Crosshair size={24} />
+            )}
           </button>
         </div>
 
+        {/* GPS Error Toast */}
+        {gpsError && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[1000] 
+            bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg text-sm shadow-lg animate-fade-in">
+            {gpsError}
+            <button 
+              onClick={() => setGpsError(null)}
+              className="ml-2 text-red-700 hover:text-red-900"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Summary Bottom Sheet */}
         {selectedLoc && (
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-5 z-30 animate-slide-up">
-             <div className="flex justify-between items-center mb-4">
-               <div>
-                 <h3 className="text-xl font-bold text-gray-900">{selectedLoc.name}</h3>
-                 <div className="flex items-center space-x-2 mt-1">
-                   <span className="px-2 py-0.5 rounded text-xs font-bold text-white" style={{backgroundColor: selectedLoc.color}}>AQI {selectedLoc.aqi}</span>
-                   <span className="text-sm text-gray-500 font-medium">• {selectedLoc.status}</span>
-                 </div>
-               </div>
-               <div className="text-right">
-                 <div className="flex items-center text-gray-500 text-sm"><Thermometer size={14} className="mr-1"/> {selectedLoc.temp}°C</div>
-                 <div className="flex items-center text-gray-500 text-sm"><Droplets size={14} className="mr-1"/> {selectedLoc.humidity}%</div>
-               </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] z-30 animate-slide-up">
+             {/* Drag indicator bar */}
+             <div className="flex justify-center pt-3 pb-2">
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full"></div>
              </div>
              
-             <div className="bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3">
-                <div className="text-2xl">{selectedLoc.advice.icon}</div>
-                <div className="text-sm text-gray-600 leading-tight pt-1">{selectedLoc.advice.text}</div>
+             {/* Header với nút back */}
+             <div className="flex items-center justify-between px-5 pb-2">
+               <button 
+                 onClick={() => setSelectedLoc(null)}
+                 className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+                 title="Đóng"
+               >
+                 <X size={20} className="text-gray-600" />
+               </button>
+               <div className="text-xs text-gray-400 font-medium">Thông tin trạm đo</div>
+               <div className="w-8"></div> {/* Spacer cho symmetry */}
              </div>
+             
+             {/* Content */}
+             <div className="px-5 pb-5">
+               <div className="flex justify-between items-center mb-4">
+                 <div>
+                   <h3 className="text-xl font-bold text-gray-900">{selectedLoc.name}</h3>
+                   <div className="flex items-center space-x-2 mt-1">
+                     <span className="px-2 py-0.5 rounded text-xs font-bold text-white" style={{backgroundColor: selectedLoc.color}}>AQI {selectedLoc.aqi}</span>
+                     <span className="text-sm text-gray-500 font-medium">• {selectedLoc.status}</span>
+                   </div>
+                 </div>
+                 <div className="text-right">
+                   <div className="flex items-center text-gray-500 text-sm"><Thermometer size={14} className="mr-1"/> {selectedLoc.temp}°C</div>
+                   <div className="flex items-center text-gray-500 text-sm"><Droplets size={14} className="mr-1"/> {selectedLoc.humidity}%</div>
+                 </div>
+               </div>
+             
+               <div className="bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3">
+                  <div className="text-2xl">{selectedLoc.advice.icon}</div>
+                  <div className="text-sm text-gray-600 leading-tight pt-1">{selectedLoc.advice.text}</div>
+               </div>
 
-             <button onClick={goToDetail} className="w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-gray-800 transition-transform active:scale-95">
-               <span>Xem chi tiết & dự báo</span>
-               <ChevronRight size={16} />
-             </button>
+               <button onClick={goToDetail} className="w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-gray-800 transition-transform active:scale-95">
+                 <span>Xem chi tiết & dự báo</span>
+                 <ChevronRight size={16} />
+               </button>
+             </div>
           </div>
         )}
       </div>

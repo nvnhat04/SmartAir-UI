@@ -262,7 +262,7 @@ function ExposureCards({ meanPM25 = 48 }) {
           </div> */}
         </CardContent>
       </Card>
-      <CleanestPlaces />
+      {/* <CleanestPlaces /> */}
 
     </div>
   );

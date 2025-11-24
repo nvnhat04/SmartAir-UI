@@ -47,3 +47,88 @@
     --ring: 212.7 26.8% 83.9%;
   }
 }
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: inherit;
+  z-index: 1;
+}
+
+.custom-user-marker,
+.custom-aqi-marker,
+.custom-map-label {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Map Labels for Sovereignty - OSM Style */
+.map-label-container {
+  text-align: center;
+  pointer-events: none;
+}
+
+.map-label-text {
+  display: inline-block;
+  color: #333;
+  font-weight: 500;
+  font-size: 11px;
+  text-shadow: 
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0    0   3px rgba(255,255,255,0.8);
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.sovereignty-label .map-label-text {
+  color: #555;
+  font-weight: 500;
+  font-size: 10px;
+  font-style: italic;
+}
+
+/* Province Label Tooltips - Always Visible */
+.province-label-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  text-shadow: 
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0    0   3px rgba(255,255,255,0.9);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.province-label-tooltip::before {
+  display: none !important;
+}
+
+/* Animation cho fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* No scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
