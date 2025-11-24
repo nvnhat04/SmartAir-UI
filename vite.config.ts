@@ -2,8 +2,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-// Lấy port từ env hoặc default 5173
-const PORT = process.env.PORT || 5173;
+
 
 export default defineConfig({
   plugins: [react()],
