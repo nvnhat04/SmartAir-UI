@@ -1,34 +1,90 @@
-import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
-import { MapPin, MapPinned, History, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { ShieldAlert } from "lucide-react";
-
+import { BarChart2, History, MapPin, MapPinned, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import WeekendGetaway from './Weekend';
 // 3. ANALYTICS VIEW (BAR CHART ONLY WITH AQI COLORS AND PM2.5 EXPOSURE)
 const analyticsData = [
-  { day: '-7', date: '12-11', aqi: 7, location: 'P. Dịch Vọng, Cầu Giấy', type: 'past' },
-  { day: '-6', date: '13-11', aqi: 15, location: 'P. Láng Hạ, Đống Đa', type: 'past' },
-  { day: '-5', date: '14-11', aqi: 30, location: 'X. Bát Tràng, Gia Lâm', type: 'past' },
-  { day: '-4', date: '15-11', aqi: 10, location: 'P. Minh Khai, HBT', type: 'past' },
-  { day: '-3', date: '16-11', aqi: 30, location: 'P. Dịch Vọng, Cầu Giấy', type: 'past' },
-  { day: '-2', date: '17-11', aqi: 45, location: 'Ecopark, Hưng Yên', type: 'past' },
-  { day: '-1', date: '18-11', aqi: 40, location: 'Ecopark, Hưng Yên', type: 'past' },
-  { day: '0', date: '19-11', aqi: 80, location: 'P. Dịch Vọng, Cầu Giấy', type: 'present' },
-  { day: '+1', date: '20-11', aqi: 120, location: 'Dự báo: Cầu Giấy', type: 'future' },
-  { day: '+2', date: '21-11', aqi: 110, location: 'Dự báo: Cầu Giấy', type: 'future' },
-  { day: '+3', date: '22-11', aqi: 95, location: 'Dự báo: Cầu Giấy', type: 'future' },
-  { day: '+4', date: '23-11', aqi: 80, location: 'Dự báo: Hoàn Kiếm', type: 'future' },
-  { day: '+5', date: '24-11', aqi: 75, location: 'Dự báo: Tây Hồ', type: 'future' },
-  { day: '+6', date: '25-11', aqi: 150, location: 'Dự báo: Cầu Giấy', type: 'future' },
+  { day: '-7', date: '17-11', aqi: 49, location: 'Phường Yên Thường, Quận Gia Lâm', type: 'past' },
+  { day: '-6', date: '18-11', aqi: 40, location: 'Xã Xuân Quan, Huyện Văn Giang', type: 'past' },
+  { day: '-5', date: '19-11', aqi: 81, location: 'Phường Nhân Chính, Quận Thanh Xuân', type: 'past' },
+  { day: '-4', date: '20-11', aqi: 87, location: 'Phường Suối Hoa, TP. Bắc Ninh', type: 'past' },
+  { day: '-3', date: '21-11', aqi: 91, location: 'Phường Quang Trung, Quận Hà Đông', type: 'past' },
+  { day: '-2', date: '22-11', aqi: 108, location: 'Phường Tân Dân, TP. Việt Trì', type: 'past' },
+  { day: '-1', date: '23-11', aqi: 101, location: 'Phường Sao Đỏ, TP. Chí Linh', type: 'past' },
+  { day: '0', date: '24-11', aqi: 141, location: 'Phường Dịch Vọng, Quận Cầu Giấy', type: 'present' },
+  { day: '+1', date: '25-11', aqi: 130, location: 'Dự báo: Quận Cầu Giấy', type: 'future' },
+  { day: '+2', date: '26-11', aqi: 115, location: 'Dự báo: Quận Thanh Xuân', type: 'future' },
+  { day: '+3', date: '27-11', aqi: 105, location: 'Dự báo: Quận Hà Đông', type: 'future' },
+  { day: '+4', date: '28-11', aqi: 95, location: 'Dự báo: Quận Gia Lâm', type: 'future' },
+  { day: '+5', date: '29-11', aqi: 88, location: 'Dự báo: Huyện Văn Giang', type: 'future' },
+  { day: '+6', date: '30-11', aqi: 120, location: 'Dự báo: Quận Cầu Giấy', type: 'future' },
 ];
 const cleanestAreas = [
-  { id: 1, name: "Ba Vì, Hà Nội", aqi: 22, pm25: 8 },
-  { id: 2, name: "Gia Lâm, Hà Nội", aqi: 38, pm25: 11 },
-  { id: 3, name: "Đông Anh, Hà Nội", aqi: 42, pm25: 13 },
-  { id: 4, name: "Cầu Giấy, Hà Nội", aqi: 70, pm25: 16 },
+  { id: 1, name: "Xã Xuân Quan, Huyện Văn Giang, Hưng Yên", aqi: 40, pm25: 10 },
+  { id: 2, name: "Phường Yên Thường, Quận Gia Lâm, Hà Nội", aqi: 49, pm25: 12 },
+  { id: 3, name: "Phường Nhân Chính, Quận Thanh Xuân, Hà Nội", aqi: 81, pm25: 21 },
+  { id: 4, name: "Phường Suối Hoa, TP. Bắc Ninh, Bắc Ninh", aqi: 87, pm25: 24 },
 ];
+// 1. Dữ liệu người dùng (Lấy từ GPS & API)
+  const userLocation = {
+    name: "Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội",
+    aqi: 141
+  };
 
+  // 2. Dữ liệu các điểm du lịch (Lấy từ API Backend của bạn)
+  const destinationData = [
+    {
+      id: 1,
+      name: "Tam Đảo, Vĩnh Phúc",
+      aqi: 35,
+      weatherType: "cloud",
+      temp: 18,
+      distance: 85,
+      driveTime: "2 giờ 15 phút",
+      recommendation: "Săn mây, check-in Thác Bạc, khí hậu mát mẻ quanh năm"
+    },
+    {
+      id: 2,
+      name: "Ba Vì, Hà Nội",
+      aqi: 42,
+      weatherType: "sun",
+      temp: 21,
+      distance: 65,
+      driveTime: "1 giờ 45 phút",
+      recommendation: "Vườn quốc gia, suối nước nóng, cắm trại rừng thông"
+    },
+    {
+      id: 3,
+      name: "Ecopark, Hưng Yên",
+      aqi: 40,
+      weatherType: "sun",
+      temp: 24,
+      distance: 18,
+      driveTime: "35 phút",
+      recommendation: "Công viên sinh thái, hồ nước rộng, đạp xe dạo chơi"
+    },
+    {
+      id: 4,
+      name: "Chùa Hương, Mỹ Đức",
+      aqi: 48,
+      weatherType: "cloud",
+      temp: 22,
+      distance: 60,
+      driveTime: "1 giờ 40 phút",
+      recommendation: "Di tích lịch sử, chèo thuyền suối Yến, núi non hữu tình"
+    },
+    {
+      id: 5,
+      name: "Đại Lải, Vĩnh Phúc",
+      aqi: 38,
+      weatherType: "sun",
+      temp: 23,
+      distance: 55,
+      driveTime: "1 giờ 20 phút",
+      recommendation: "Hồ Đại Lải xanh mát, resort nghỉ dưỡng, thể thao nước"
+    }
+  ];
 const getAQIColor = (aqi) => {
   if (aqi <= 50) return '#22c55e';
   if (aqi <= 100) return '#eab308';
@@ -39,38 +95,43 @@ const getAQIColor = (aqi) => {
 function CleanestPlaces() {
   return (
     <div className="mt-6">
-      <h2 className="font-bold text-gray-800 mb-3 flex items-center">
-        <MapPin size={18} className="mr-2 text-green-600" />
-        Khu vực đề xuất mọi người di chuyển đến
-      </h2>
+      <div className="flex items-center space-x-3 mb-4">
+        <div className="bg-gradient-to-br from-green-500 to-emerald-500 p-2.5 rounded-xl shadow-md">
+          <MapPin size={20} className="text-white"/>
+        </div>
+        <div>
+          <h2 className="font-bold text-gray-800 text-lg">Địa điểm không khí tốt nhất</h2>
+          <p className="text-xs text-gray-500">Gợi ý di chuyển đến khu vực sạch hơn</p>
+        </div>
+      </div>
 
       <div className="flex flex-col space-y-3">
         {cleanestAreas.map((p, idx) => (
           <div
             key={p.id}
-            className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between"
+            className="bg-white p-4 rounded-2xl border-2 border-gray-100 shadow-md hover:shadow-xl hover:border-green-300 transition-all duration-300 flex items-center justify-between cursor-pointer hover:-translate-y-1"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
                 {idx + 1}
               </div>
 
               <div>
                 <div className="font-bold text-gray-800 text-sm">{p.name}</div>
-                {/* <div className="text-[10px] text-gray-500">
+                <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
                   PM2.5: {p.pm25} µg/m³
-                </div> */}
+                </div>
               </div>
             </div>
 
             <div className="text-right">
               <div
-                className="font-bold text-lg"
+                className="font-black text-2xl"
                 style={{ color: getAQIColor(p.aqi) }}
               >
                 {p.aqi}
               </div>
-              <div className="text-[10px] text-gray-400">AQI</div>
+              <div className="text-[11px] text-gray-500 font-semibold uppercase tracking-wide">AQI</div>
             </div>
           </div>
         ))}
@@ -93,16 +154,28 @@ export default function AnalyticsView () {
   const futurePm25Avg = (futureAvg * 0.6).toFixed(1);
 
   return (
-    <div className="p-5 pb-28 space-y-6 animate-fade-in h-full overflow-y-auto bg-gray-50">
-      <h1 className="text-2xl font-bold text-gray-900">Lịch sử & Dự báo</h1>
+    <div className="p-5 pb-28 space-y-6 animate-fade-in h-full overflow-y-auto bg-gradient-to-b from-blue-50 to-gray-50" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Lịch sử & Dự báo</h1>
+          <p className="text-sm text-gray-500 mt-1">Phân tích chất lượng không khí 14 ngày</p>
+        </div>
+        <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-100">
+          <BarChart2 className="text-blue-600" size={24} />
+        </div>
+      </div>
 
       {/* Interactive Chart */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-        <div className="text-sm font-bold text-gray-700 mb-4 flex justify-between items-center">
-          <span>Diễn biến 14 ngày</span>
+      <div className="bg-white p-5 rounded-3xl shadow-lg border border-blue-100 hover:shadow-xl transition-shadow duration-300">
+        <div className="text-sm font-bold text-gray-800 mb-5 flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-            <span className="text-xs text-gray-400">Dựa trên màu AQI</span>
+            <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
+            <span className="text-lg">Diễn biến 14 ngày</span>
+          </div>
+          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
+            <span className="text-xs text-gray-500">Mã màu AQI</span>
           </div>
         </div>
 
@@ -139,80 +212,105 @@ export default function AnalyticsView () {
         </div>
 
         {/* Dynamic Info Box */}
-        <div className="mt-4 bg-gray-50 rounded-xl p-3 flex items-center justify-between border border-gray-100 transition-all">
-          <div>
-            <div className="text-[10px] left font-bold text-gray-500 uppercase tracking-wider">
-              {selectedData.type === 'past' ? 'Lịch sử'
-                : selectedData.type === 'present' ? 'Hôm nay'
-                : 'Dự báo'} • {selectedData.date}
+        <div className="mt-5 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-4 flex items-center justify-between border-2 border-blue-200 transition-all duration-300 shadow-md hover:shadow-lg">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-1">
+              <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-white px-2 py-1 rounded-md">
+                {selectedData.type === 'past' ? '📊 Lịch sử'
+                  : selectedData.type === 'present' ? '📍 Hôm nay'
+                  : '🔮 Dự báo'}
+              </div>
+              <span className="text-[10px] font-semibold text-gray-500">{selectedData.date}</span>
             </div>
-            <div className="font-bold text-gray-800 text-sm mt-0.5 flex items-center">
-              <MapPin size={12} className="mr-1"/> 
-              Cầu Giấy, Hà Nội
+            <div className="font-bold text-gray-800 text-base mt-1 flex items-center">
+              <MapPin size={14} className="mr-1.5 text-blue-500"/> 
+              {selectedData.location}
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold" style={{color: getAQIColor(selectedData.aqi)}}>
+          <div className="text-right ml-4">
+            <div className="text-3xl font-black" style={{color: getAQIColor(selectedData.aqi)}}>
               {selectedData.aqi}
             </div>
-            <div className="text-[10px] text-gray-400">AQI</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">AQI</div>
           </div>
         </div>
       </div>
 
       {/* Route Analysis */}
       <div>
-        <h2 className="font-bold text-gray-800 mb-3 flex items-center">
-          <MapPinned size={18} className="mr-2 text-purple-600"/> 
-          Thống kê mức độ phơi nhiễm
-        </h2>
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-2.5 rounded-xl shadow-md">
+            <MapPinned size={20} className="text-white"/>
+          </div>
+          <div>
+            <h2 className="font-bold text-gray-800 text-lg">Thống kê mức độ phơi nhiễm</h2>
+            <p className="text-xs text-gray-500">Phân tích 7 ngày qua và tương lai</p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           {/* Past Card */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 relative overflow-hidden">
-            <div className="absolute right-0 top-0 p-2 opacity-10"><History size={40}/></div>
-            <div className="text-xs text-gray-400 mb-1">7 ngày qua</div>
-
-            <div className="text-2xl font-bold text-gray-800">{pastAvg}</div>
-            <div className="text-[10px] text-gray-500 mb-3">AQI Trung bình</div>
-
-            <div className="border-t border-dashed border-gray-200 pt-2">
-              <div className="text-lg font-bold text-gray-700">
-                {pastPm25Avg} <span className="text-[10px] font-normal text-gray-400">µg/m³</span>
-              </div>
-              <div className="text-[10px] text-gray-500">Phơi nhiễm PM2.5</div>
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-5 rounded-2xl border-2 border-gray-200 relative overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute right-0 top-0 p-3 opacity-5"><History size={50}/></div>
+            <div className="flex items-center space-x-2 mb-2">
+              <History size={16} className="text-gray-600"/>
+              <div className="text-xs font-bold text-gray-600">7 NGÀY QUA</div>
             </div>
 
-            <div className="mt-2 text-[10px] bg-gray-100 inline-block px-2 py-0.5 rounded text-gray-600">
-              Đã đi qua 4 quận
+            <div className="text-3xl font-black text-gray-800 mb-1">{pastAvg}</div>
+            <div className="text-xs font-semibold text-gray-500 mb-3">AQI Trung bình</div>
+
+            <div className="border-t-2 border-dashed border-gray-300 pt-3 mt-2">
+              <div className="text-xl font-bold text-gray-700">
+                {pastPm25Avg} <span className="text-xs font-normal text-gray-400">µg/m³</span>
+              </div>
+              <div className="text-[11px] text-gray-500 font-medium">Phơi nhiễm PM2.5</div>
+            </div>
+
+            <div className="mt-3 text-[11px] bg-white font-semibold inline-block px-3 py-1 rounded-lg text-gray-700 shadow-sm">
+              📍 4 quận đã ghé
             </div>
           </div>
 
           {/* Future Card */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-100 relative overflow-hidden">
-            <div className="absolute right-0 top-0 p-2 opacity-10"><TrendingUp size={40}/></div>
-            <div className="text-xs text-gray-400 mb-1">7 ngày tới</div>
-
-            <div className="text-2xl font-bold text-blue-600">{futureAvg}</div>
-            <div className="text-[10px] text-gray-500 mb-3">AQI Dự kiến</div>
-
-            <div className="border-t border-dashed border-gray-200 pt-2">
-              <div className="text-lg font-bold text-blue-600">
-                {futurePm25Avg} <span className="text-[10px] font-normal text-blue-400">µg/m³</span>
-              </div>
-              <div className="text-[10px] text-gray-500">Phơi nhiễm PM2.5</div>
+          <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-5 rounded-2xl border-2 border-blue-200 relative overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute right-0 top-0 p-3 opacity-5"><TrendingUp size={50}/></div>
+            <div className="flex items-center space-x-2 mb-2">
+              <TrendingUp size={16} className="text-blue-600"/>
+              <div className="text-xs font-bold text-blue-600">7 NGÀY TỚI</div>
             </div>
 
-            <div className={`mt-2 text-[10px] inline-block px-2 py-0.5 rounded font-bold ${diff < 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-              {diff < 0 ? `Giảm ${Math.abs(diff)} đơn vị` : `Tăng ${diff} đơn vị`}
+            <div className="text-3xl font-black text-blue-600 mb-1">{futureAvg}</div>
+            <div className="text-xs font-semibold text-gray-500 mb-3">AQI Dự kiến</div>
+
+            <div className="border-t-2 border-dashed border-blue-300 pt-3 mt-2">
+              <div className="text-xl font-bold text-blue-600">
+                {futurePm25Avg} <span className="text-xs font-normal text-blue-400">µg/m³</span>
+              </div>
+              <div className="text-[11px] text-gray-500 font-medium">Phơi nhiễm PM2.5</div>
+            </div>
+
+            <div className={`mt-3 text-[11px] font-bold inline-block px-3 py-1 rounded-lg shadow-sm ${diff < 0 ? 'bg-green-100 text-green-700 border-2 border-green-300' : 'bg-red-100 text-red-700 border-2 border-red-300'}`}>
+              {diff < 0 ? `📉 Giảm ${Math.abs(diff)} đơn vị` : `📈 Tăng ${diff} đơn vị`}
             </div>
           </div>
         </div>
 
-        <div className="mt-3 text-xs text-gray-500 italic text-center">
-          *Dự báo dựa trên lộ trình di chuyển thường ngày của bạn.
+        <div className="mt-4 bg-white border-l-4 border-blue-400 p-3 rounded-r-xl shadow-sm">
+          <p className="text-xs text-gray-600 font-medium">
+            💡 <span className="font-semibold">Lưu ý:</span> Dự báo dựa trên lộ trình di chuyển thường ngày của bạn.
+          </p>
         </div>
         <ExposureCards meanPM25={pastPm25Avg } />
+        <WeekendGetaway 
+          currentLocation={userLocation} 
+          destinations={destinationData} 
+        />
+        <div className="mt-8 text-center bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+          <p className="text-sm text-gray-600 font-medium">
+            ✨ Dữ liệu được cập nhật theo thời gian thực
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -243,17 +341,25 @@ function ExposureCards({ meanPM25 = 48 }) {
       </Card> */}
 
       {/* Cigarette Equivalent */}
-      <Card className="rounded-2xl shadow-md bg-white bg-gradient-to-br from-amber-200 ">
-        <CardContent className="p-6 space-y-3">
-          <div className="flex flex-col items-center space-x-2">
-            {/* <Smoking className="w-6 h-6 text-gray-600" /> */}
-            <h2 className="text-lg font-semibold">Mức phơi nhiễm tương đương</h2>
+      <Card className="rounded-3xl shadow-lg bg-gradient-to-br from-amber-100 via-orange-100 to-red-100 border-2 border-amber-200 hover:shadow-xl transition-all duration-300">
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-center justify-center space-x-3">
+            <div className="bg-white p-3 rounded-xl shadow-md">
+              <span className="text-3xl">🚬</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Mức phơi nhiễm tương đương</h2>
           </div>
 
-          <div className="text-xl font-bold text-gray-800">{cig} điếu thuốc</div>
-          <p className="text-xs text-gray-600">
-            ( 22 µg/m³ PM25 ≈ 1 điếu)
-          </p>
+          <div className="text-center bg-white rounded-2xl p-4 shadow-md">
+            <div className="text-4xl font-black text-orange-600">{cig}</div>
+            <div className="text-sm font-semibold text-gray-600 mt-1">điếu thuốc / tuần</div>
+          </div>
+          
+          <div className="bg-white/50 rounded-xl p-3 border border-orange-200">
+            <p className="text-xs text-gray-700 text-center font-medium">
+              💡 22 µg/m³ PM2.5 ≈ 1 điếu thuốc
+            </p>
+          </div>
 
           {/* <div className="flex space-x-1">
             {[...Array(Math.min(5, Math.round(cig)))].map((_, i) => (
@@ -262,7 +368,7 @@ function ExposureCards({ meanPM25 = 48 }) {
           </div> */}
         </CardContent>
       </Card>
-      <CleanestPlaces />
+      
 
     </div>
   );

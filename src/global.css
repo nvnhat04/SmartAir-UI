@@ -6,3 +6,24 @@
   -ms-overflow-style: none; /* IE & Edge */
   scrollbar-width: none; /* Firefox */
 }
+
+/* Custom Leaflet Marker Styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ensure Leaflet map takes full height */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Remove default marker styles */
+.custom-marker .leaflet-marker-icon {
+  background: transparent;
+  border: none;
+}
