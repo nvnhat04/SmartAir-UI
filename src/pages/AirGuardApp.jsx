@@ -43,8 +43,8 @@ const forecastDays = [
 const baseStationMarkers = [
   { 
     id: 1, 
-    lat: 21.028511, 
-    lng: 105.804817, 
+    lat: 21.038511, 
+    lng: 105.784817, 
     baseAqi: 141, 
     name: 'Trạm Cầu Giấy',
     address: 'Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội',
