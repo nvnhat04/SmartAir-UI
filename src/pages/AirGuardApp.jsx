@@ -353,29 +353,6 @@ export default function AirGuardApp() {
     const searchAbortRef = useRef(null);
     const mapInstanceRef = useRef(null); // Reference to map instance
 
-    const localSearchMatches = searchQuery
-      ? baseStationMarkers.filter(marker => {
-          const query = searchQuery.toLowerCase();
-          return marker.name.toLowerCase().includes(query) ||
-                 marker.address.toLowerCase().includes(query) ||
-                 marker.district.toLowerCase().includes(query) ||
-                 marker.city.toLowerCase().includes(query);
-        }).slice(0, 5)
-      : [];
-
-    const combinedSearchResults = [
-      ...localSearchMatches.map(marker => ({
-        id: `station-${marker.id}`,
-        type: 'station',
-        name: marker.name,
-        address: marker.address ?? marker.city,
-        lat: marker.lat,
-        lng: marker.lng,
-        raw: marker
-      })),
-      ...osmResults
-    ];
-
     // Reverse geocoding để lấy địa chỉ từ tọa độ
     const reverseGeocode = async (lat, lng) => {
       try {
@@ -491,6 +468,33 @@ export default function AirGuardApp() {
       return generateLocationDetails({ ...m, aqi: newAqi });
     });
 
+    const localSearchMatches = searchQuery
+      ? baseStationMarkers.filter(marker => {
+          const query = searchQuery.toLowerCase();
+          return marker.name.toLowerCase().includes(query) ||
+                 marker.address.toLowerCase().includes(query) ||
+                 marker.district.toLowerCase().includes(query) ||
+                 marker.city.toLowerCase().includes(query);
+        }).slice(0, 5)
+      : [];
+
+    const combinedSearchResults = [
+      ...localSearchMatches.map(marker => {
+        // Lấy dữ liệu đầy đủ từ currentMarkers (có temp, humidity, etc.)
+        const fullMarkerData = currentMarkers.find(m => m.id === marker.id) || marker;
+        return {
+          id: `station-${marker.id}`,
+          type: 'station',
+          name: marker.name,
+          address: marker.address ?? marker.city,
+          lat: marker.lat,
+          lng: marker.lng,
+          raw: fullMarkerData
+        };
+      }),
+      ...osmResults
+    ];
+
     const handleMarkerClick = (markerData) => {
       const fullData = currentMarkers.find(m => m.id === markerData.id) || markerData;
       setSelectedLoc(fullData);
@@ -498,14 +502,14 @@ export default function AirGuardApp() {
 
     // Xử lý khi click vào bất kỳ vị trí nào trên map
     const handleMapClick = (lat, lng) => {
-      console.log('=== handleMapClick CALLED ===> lat:', lat, 'lng:', lng);
+      // console.log('=== handleMapClick CALLED ===> lat:', lat, 'lng:', lng);
       // Tìm trạm gần nhất
       const { nearestStation } = getInterpolatedAQI(lat, lng, currentMarkers);
-      console.log('Nearest station found:', nearestStation);
+      // console.log('Nearest station found:', nearestStation);
       
       // Hiển thị thông tin của trạm gần nhất
       if (nearestStation) {
-        console.log('Map clicked, showing nearest station:', nearestStation.name);
+        // console.log('Map clicked, showing nearest station:', nearestStation.name);
         setSelectedLoc(nearestStation);
       } else {
         console.warn('No nearest station found!');
@@ -587,9 +591,15 @@ export default function AirGuardApp() {
       setMapZoom(13);
 
       if (result.type === 'station' && result.raw) {
-        setSelectedLoc(result.raw);
+        // Nếu là station, hiển thị thông tin station với dữ liệu đầy đủ từ currentMarkers
+        const fullData = currentMarkers.find(m => m.id === result.raw.id) || result.raw;
+        setSelectedLoc(fullData);
       } else {
-        setSelectedLoc(null);
+        // Nếu là địa điểm OSM, tìm trạm gần nhất và hiển thị
+        const { nearestStation } = getInterpolatedAQI(result.lat, result.lng, currentMarkers);
+        if (nearestStation) {
+          setSelectedLoc(nearestStation);
+        }
       }
 
       setIsSearchOpen(false);
@@ -794,10 +804,10 @@ export default function AirGuardApp() {
                 </div>
               </div>
 
-              <div className='bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3'>
+              {/* <div className='bg-gray-50 p-3 rounded-xl mb-4 flex items-start space-x-3'>
                 <div className='text-2xl'>{selectedLoc.advice.icon}</div>
                 <div className='text-sm text-gray-600 leading-tight pt-1'>{selectedLoc.advice.text}</div>
-              </div>
+              </div> */}
 
               <button onClick={goToDetail} className='w-full bg-gray-900 text-white py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 hover:bg-gray-800 transition-transform active:scale-95'>
                 <span>Xem chi tiết & dự báo</span>

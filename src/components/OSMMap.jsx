@@ -49,11 +49,11 @@ function MapController({ center, zoom, onMapReady, onMapClick }) {
   
   // Handle map click events
   useEffect(() => {
-    console.log('MapController: onMapClick prop =', onMapClick);
-    if (!onMapClick) {
-      console.warn('MapController: onMapClick is not provided!');
-      return;
-    }
+    // console.log('MapController: onMapClick prop =', onMapClick);
+    // if (!onMapClick) {
+    //   console.warn('MapController: onMapClick is not provided!');
+    //   return;
+    // }
     
     const handleClick = (e) => {
       console.log('MapController: Map clicked at', e.latlng);
