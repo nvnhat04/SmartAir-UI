@@ -29,7 +29,7 @@ import OSMMap from '../components/OSMMap';
 import AIChat from './AIchat';
 import AnalyticsView from './Analytics';
 import NewsView from './News';
-
+import PM25OverlayExample from './PM25OverlayExample';
 // --- MOCK DATA ---
 // Hàm tạo danh sách ngày dự báo thực tế
 const generateForecastDays = () => {
@@ -1126,17 +1126,19 @@ export default function AirGuardApp() {
         <div className="flex-1 overflow-hidden relative bg-white">
            {activeTab === 'map' && <MapView />}
            {activeTab === 'detail' && <DetailView />}
-           {activeTab === 'analytics' && <AnalyticsView />}
+           {/* {activeTab === 'analytics' && <AnalyticsView />} */}
            {activeTab === 'news' && <NewsView />}
            {activeTab === 'ai' && <AIChat />}
+           {activeTab === 'forecast' && <ForecastView />}
       
         </div>
 
         <div className="h-[80px] bg-white border-t border-gray-100 flex justify-around items-center pb-4 z-50 shrink-0 px-2 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
           <NavBtn id="map" icon={<MapIcon />} label="Dự báo" />
-          <NavBtn id="analytics" icon={<BarChart2 />} label="Phơi nhiễm" />
+          {/* <NavBtn id="analytics" icon={<BarChart2 />} label="Phơi nhiễm" /> */}
+           <NavBtn id="ai" icon={<MessageSquare />} label="AI Chat" />
           <NavBtn id="news" icon={<Newspaper />} label="Tin tức" />
-          <NavBtn id="ai" icon={<MessageSquare />} label="AI Chat" />
+         
         </div>
       </div>
     </div>

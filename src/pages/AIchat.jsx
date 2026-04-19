@@ -17,7 +17,7 @@ export default function AIChat() {
 
     const quickSuggestions = [
       { icon: <Wind size={14} />, text: 'AQI hôm nay thế nào?' },
-      { icon: <Heart size={14} />, text: 'Lời khuyên sức khỏe' },
+      { icon: <Heart size={14} />, text: 'Thống kê phơi nhiễm' },
       { icon: <TrendingUp size={14} />, text: 'Dự báo tuần này' },
       { icon: <Lightbulb size={14} />, text: 'Cách phòng tránh ô nhiễm' },
     ];

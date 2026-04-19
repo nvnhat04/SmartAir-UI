@@ -2,10 +2,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef } from 'react';
 import { Circle, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
-import AQIWMSLayer from './AQIWMSLayer';
 import MapLabel from './MapLabel';
+import PM25TileLayer from './PM25TileLayer';
 import VNShapefileLayer from './VNShapefileLayer';
-
 // Fix icon marker mặc định của Leaflet
 if (L.Icon.Default.prototype._getIconUrl) {
   delete L.Icon.Default.prototype._getIconUrl;
@@ -117,6 +116,16 @@ const createAQIIcon = (aqi, color) => {
   });
 };
 
+// Chuyển đổi selectedDay (offset từ hôm nay) sang định dạng YYYYMMDD
+const formatDateForAPI = (dayOffset) => {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+};
+
 export default function OSMMap({ 
   center = [21.0285, 105.8542], // Hà Nội mặc định
   zoom = 11,
@@ -154,9 +163,10 @@ export default function OSMMap({
 
         {/* AQI/PM2.5 Heatmap Layer từ PopGIS VNU */}
         {showHeatmap && (
-          <AQIWMSLayer 
-            selectedDay={selectedDay} 
-            opacity={0.6}
+          <PM25TileLayer
+            serverUrl="https://smart-air-mobile-app.onrender.com"
+            selectedDate={formatDateForAPI(selectedDay)}
+            opacity={0.7}
           />
         )}
 
