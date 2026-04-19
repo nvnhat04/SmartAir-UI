@@ -29,7 +29,7 @@ import OSMMap from '../components/OSMMap';
 import AIChat from './AIchat';
 import AnalyticsView from './Analytics';
 import NewsView from './News';
-import PM25OverlayExample from './PM25OverlayExample';
+
 // --- MOCK DATA ---
 // Hàm tạo danh sách ngày dự báo thực tế
 const generateForecastDays = () => {
