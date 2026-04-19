@@ -148,6 +148,8 @@ export default function OSMMap({
         style={{ height: '100%', width: '100%', zIndex: 1 }}
         scrollWheelZoom={true}
         doubleClickZoom={true}
+        maxZoom={16}
+        minZoom={7}
         zoomControl={false}
         ref={mapRef}
         whenReady={() => {
