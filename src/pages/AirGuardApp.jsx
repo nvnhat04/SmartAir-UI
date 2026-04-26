@@ -853,7 +853,7 @@ export default function AirGuardApp() {
       const today = new Date();
       const forecastData = [];
       
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 9; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         
@@ -1010,9 +1010,9 @@ export default function AirGuardApp() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                <h3 className="font-bold text-gray-800 text-base">Diễn biến trong 7 ngày tiếp theo</h3>
+                <h3 className="font-bold text-gray-800 text-base">Diễn biến trong 9 ngày tiếp theo</h3>
               </div>
-              <span className="text-[10px] text-gray-500 font-medium">{weeklyDateRange}</span>
+              {/* <span className="text-[10px] text-gray-500 font-medium">{weeklyDateRange}</span> */}
             </div>
             <div className="h-36 w-full bg-gradient-to-b from-gray-50 to-white rounded-2xl p-3">
               <ResponsiveContainer width="100%" height="100%">
@@ -1049,7 +1049,7 @@ export default function AirGuardApp() {
         <Calendar size={20} className="text-white"/>
       </div>
       <div>
-        <h3 className="font-bold text-gray-800 text-lg">Dự báo 7 ngày</h3>
+        <h3 className="font-bold text-gray-800 text-lg">Dự báo 9 ngày</h3>
         <p className="text-xs text-gray-500">Thời tiết & chất lượng không khí</p>
       </div>
     </div>
